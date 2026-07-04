@@ -1,114 +1,470 @@
+
 <!DOCTYPE html>
 <html lang="ru">
-<head> 
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мой Сайт</title>
-    <style>
-        /* Базовые стили для всей страницы */
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-            color: #333;
-        }
-
-        /* Шапка сайта */
-        header {
-            background-color: #333;
-            color: white;
-            text-align: center;
-            padding: 20px;
-        }
-
-        header h1 {
-            margin: 0 0 10px 0;
-            font-size: 24px;
-        }
-
-        header nav a {
-            color: #fff;
-            text-decoration: none;
-            margin: 0 10px;
-            font-weight: bold;
-        }
-
-        header nav a:hover {
-            color: #ddd;
-        }
-
-        /* Контейнер для центрирования контента */
-        .container {
-            max-width: 900px;
-            margin: 20px auto;
-            padding: 0 20px;
-        }
-
-        /* Создаем колонки: контент + боковая панель */
-        .main-layout {
-            display: flex;
-            gap: 20px;
-        }
-
-        /* Основная статья */
-        .main-content {
-            flex: 3;
-            background: white;
-            padding: 20px;
-            border-radius: 4px;
-        }
-
-        /* Боковая панель */
-        .sidebar {
-            flex: 1;
-            background: #e9e9e9;
-            padding: 20px;
-            border-radius: 4px;
-        }
-
-        /* Подвал */
-        footer {
-            background-color: #333;
-            color: white;
-            text-align: center;
-            padding: 15px;
-            margin-top: 20px;
-            font-size: 14px;
-        }
-    </style>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Gesture Shapes</title>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #06060f;
+  overflow: hidden;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  height: 100vh; width: 100vw;
+  user-select: none;
+}
+#canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 0;
+}
+#webcam {
+  position: fixed;
+  bottom: 24px; right: 24px;
+  width: 220px; height: 165px;
+  border-radius: 16px;
+  object-fit: cover;
+  transform: scaleX(-1);
+  z-index: 10;
+  border: 2px solid rgba(255,255,255,0.08);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+  opacity: 0;
+  transition: opacity 0.6s;
+}
+#webcam.ready { opacity: 1; }
+#ui {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 5;
+  pointer-events: none;
+}
+#counter {
+  position: absolute;
+  top: 36px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 96px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.06);
+  letter-spacing: 6px;
+  transition: color 0.5s;
+}
+#shapeName {
+  position: absolute;
+  bottom: 44px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 24px;
+  font-weight: 300;
+  color: rgba(255,255,255,0.35);
+  letter-spacing: 8px;
+  text-transform: uppercase;
+  transition: color 0.5s, opacity 0.4s;
+}
+#clenchDot {
+  position: absolute;
+  top: 148px; left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+#clenchDot span {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  transition: all 0.3s;
+}
+#clenchDot span.active {
+  background: rgba(255,255,255,0.6);
+  box-shadow: 0 0 12px rgba(255,255,255,0.2);
+}
+#loading {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #06060f;
+  transition: opacity 1s;
+}
+#loading.hidden { opacity: 0; pointer-events: none; }
+#loading p {
+  color: rgba(255,255,255,0.3);
+  font-size: 14px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-top: 24px;
+}
+.spinner {
+  width: 40px; height: 40px;
+  border: 2px solid rgba(255,255,255,0.06);
+  border-top-color: rgba(255,255,255,0.3);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
 </head>
 <body>
 
-    <header>
-        <h1>Название Сайта</h1>
-        <nav>
-            <a href="#">Главная</a>
-            <a href="#">О нас</a>
-            <a href="#">Контакты</a>
-        </nav>
-    </header>
+<canvas id="canvas"></canvas>
+<video id="webcam" playsinline></video>
 
-    <div class="container">
-        <div class="main-layout">
-            
-            <main class="main-content">
-                <h2>Добро пожаловать!</h2>
-                <p>Это пример легкой и понятной разметки страницы, где HTML и CSS объединены в одном файле.</p>
-                <p>Такой подход очень удобен для быстрых набросков, тестов или создания простых одностраничных сайтов (landing page).</p>
-            </main>
-            
-            <aside class="sidebar">
-                <h3>Боковая панель</h3>
-                <p>Здесь можно разместить ссылки, теги, виджеты или дополнительную информацию.</p>
-            </aside>
-            
-        </div>
-    </div>
+<div id="ui">
+  <div id="counter">0</div>
+  <div id="clenchDot"></div>
+  <div id="shapeName">&mdash;</div>
+</div>
 
-    <footer>
-        <p>&copy; 2026 Все права защищены</p>
-    </footer>
+<div id="loading">
+  <div class="spinner"></div>
+  <p>Загрузка&hellip;</p>
+</div>
 
+<script>
+const VIDEO_W = 640, VIDEO_H = 480;
+const CLENCH_THRESHOLD = 0.42;
+const COOLDOWN_MS = 400;
+const RESET_MS = 4000;
+const POINTS = 140;
+const SMOOTHING = 0.07;
+
+const SHAPES = [
+  null,
+  { name: 'Шар',      gen: genCircle,    color: '#00e5ff' },
+  { name: 'Треугольник', gen: genTriangle,  color: '#ffd740' },
+  { name: 'Квадрат',   gen: genSquare,    color: '#e040fb' },
+  { name: 'Пентагон',  gen: genPentagon,  color: '#69f0ae' },
+  { name: 'Звезда',    gen: genStar,      color: '#ff6e40' },
+  { name: 'Гексагон',  gen: genHexagon,   color: '#40c4ff' },
+];
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const videoEl = document.getElementById('webcam');
+const counterEl = document.getElementById('counter');
+const shapeNameEl = document.getElementById('shapeName');
+const clenchDotEl = document.getElementById('clenchDot');
+const loadingEl = document.getElementById('loading');
+
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+for (let i = 0; i < 12; i++) {
+  const dot = document.createElement('span');
+  clenchDotEl.appendChild(dot);
+}
+
+let handsData = [];
+let clenchCount = 0;
+let wasFist = false;
+let lastClench = 0;
+let lastHandTime = Date.now();
+let size = 100;
+let targetSize = 100;
+let prevCount = -1;
+let morphProgress = 1;
+let prevPoints = [];
+let currPoints = [];
+
+function dist3(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+}
+function dist2(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function isFist(lm) {
+  const cx = (lm[0].x + lm[9].x) / 2;
+  const cy = (lm[0].y + lm[9].y) / 2;
+  const cz = (lm[0].z + lm[9].z) / 2;
+  const hs = dist3(lm[0], lm[12]);
+  if (hs < 0.01) return false;
+  const tips = [4, 8, 12, 16, 20];
+  let closed = 0;
+  for (const t of tips) {
+    if (dist3(lm[t], { x: cx, y: cy, z: cz }) / hs < CLENCH_THRESHOLD) closed++;
+  }
+  return closed >= 4;
+}
+
+const hands = new Hands({
+  locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${f}`
+});
+hands.setOptions({
+  maxNumHands: 2, modelComplexity: 1,
+  minDetectionConfidence: 0.7, minTrackingConfidence: 0.6
+});
+
+const camera = new Camera(videoEl, {
+  onFrame: async () => { await hands.send({ image: videoEl }); },
+  width: VIDEO_W, height: VIDEO_H
+});
+
+hands.onResults(res => {
+  handsData = res.multiHandLandmarks || [];
+  const now = Date.now();
+
+  if (handsData.length > 0) {
+    const fist = isFist(handsData[0]);
+    if (fist && !wasFist && now - lastClench > COOLDOWN_MS) {
+      clenchCount = (clenchCount + 1) % SHAPES.length;
+      lastClench = now;
+      updateUI();
+    }
+    wasFist = fist;
+
+    if (handsData.length >= 2) {
+      const d = dist2(handsData[0][9], handsData[1][9]);
+      targetSize = 60 + d * 700;
+      targetSize = Math.max(60, Math.min(500, targetSize));
+    } else {
+      const lm = handsData[0];
+      const hs = dist3(lm[0], lm[9]);
+      let td = 0;
+      for (const t of [4, 8, 12, 16, 20]) td += dist3(lm[t], lm[9]);
+      const open = td / Math.max(hs * 5, 0.001);
+      targetSize = 40 + open * 380;
+      targetSize = Math.max(40, Math.min(480, targetSize));
+    }
+    lastHandTime = now;
+  } else {
+    wasFist = false;
+  }
+
+  if (now - lastHandTime > RESET_MS && clenchCount > 0) {
+    clenchCount = 0;
+    updateUI();
+  }
+});
+
+function updateUI() {
+  const n = clenchCount;
+  counterEl.textContent = n;
+  const dots = clenchDotEl.querySelectorAll('span');
+  dots.forEach((d, i) => d.classList.toggle('active', i < n));
+
+  if (n > 0 && SHAPES[n]) {
+    shapeNameEl.textContent = SHAPES[n].name;
+    shapeNameEl.style.color = SHAPES[n].color;
+    counterEl.style.color = SHAPES[n].color + '15';
+  } else {
+    shapeNameEl.textContent = '\u2014';
+    shapeNameEl.style.color = 'rgba(255,255,255,0.35)';
+    counterEl.style.color = 'rgba(255,255,255,0.06)';
+  }
+}
+
+// Shape generators
+function genCircle(cx, cy, r, n) {
+  r /= 2;
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    pts.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
+  }
+  return pts;
+}
+
+function genSquare(cx, cy, s, n) {
+  s /= 2;
+  const ps = Math.floor(n / 4);
+  const pts = [];
+  for (let i = 0; i < ps; i++) { const t = i / ps;
+    pts.push({ x: cx - s + t * s * 2, y: cy - s });
+    pts.push({ x: cx + s, y: cy - s + t * s * 2 });
+    pts.push({ x: cx + s - t * s * 2, y: cy + s });
+    pts.push({ x: cx - s, y: cy + s - t * s * 2 });
+  }
+  return pts;
+}
+
+function genTriangle(cx, cy, s, n) {
+  const r = s / 2;
+  const ps = Math.floor(n / 3);
+  const pts = [];
+  for (let i = 0; i < 3; i++) {
+    const a1 = i * 2 * Math.PI / 3 - Math.PI / 2;
+    const a2 = (i + 1) * 2 * Math.PI / 3 - Math.PI / 2;
+    const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+    const x2 = cx + r * Math.cos(a2), y2 = cy + r * Math.sin(a2);
+    for (let j = 0; j < ps; j++) { const t = j / ps;
+      pts.push({ x: x1 + (x2 - x1) * t, y: y1 + (y2 - y1) * t });
+    }
+  }
+  return pts;
+}
+
+function genPentagon(cx, cy, s, n) {
+  const r = s / 2;
+  const ps = Math.floor(n / 5);
+  const pts = [];
+  for (let i = 0; i < 5; i++) {
+    const a1 = i * 2 * Math.PI / 5 - Math.PI / 2;
+    const a2 = (i + 1) * 2 * Math.PI / 5 - Math.PI / 2;
+    const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+    const x2 = cx + r * Math.cos(a2), y2 = cy + r * Math.sin(a2);
+    for (let j = 0; j < ps; j++) { const t = j / ps;
+      pts.push({ x: x1 + (x2 - x1) * t, y: y1 + (y2 - y1) * t });
+    }
+  }
+  return pts;
+}
+
+function genStar(cx, cy, s, n) {
+  const or = s / 2, ir = s / 6;
+  const ps = Math.floor(n / 10);
+  const pts = [];
+  for (let i = 0; i < 10; i++) {
+    const a1 = i * Math.PI / 5 - Math.PI / 2;
+    const a2 = (i + 1) * Math.PI / 5 - Math.PI / 2;
+    const r1 = i % 2 === 0 ? or : ir;
+    const r2 = (i + 1) % 2 === 0 ? or : ir;
+    const x1 = cx + r1 * Math.cos(a1), y1 = cy + r1 * Math.sin(a1);
+    const x2 = cx + r2 * Math.cos(a2), y2 = cy + r2 * Math.sin(a2);
+    for (let j = 0; j < ps; j++) { const t = j / ps;
+      pts.push({ x: x1 + (x2 - x1) * t, y: y1 + (y2 - y1) * t });
+    }
+  }
+  return pts;
+}
+
+function genHexagon(cx, cy, s, n) {
+  const r = s / 2;
+  const ps = Math.floor(n / 6);
+  const pts = [];
+  for (let i = 0; i < 6; i++) {
+    const a1 = i * 2 * Math.PI / 6 - Math.PI / 2;
+    const a2 = (i + 1) * 2 * Math.PI / 6 - Math.PI / 2;
+    const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+    const x2 = cx + r * Math.cos(a2), y2 = cy + r * Math.sin(a2);
+    for (let j = 0; j < ps; j++) { const t = j / ps;
+      pts.push({ x: x1 + (x2 - x1) * t, y: y1 + (y2 - y1) * t });
+    }
+  }
+  return pts;
+}
+
+function genPoints(n, cx, cy, s) {
+  return SHAPES[n].gen(cx, cy, s, POINTS);
+}
+
+// Stars
+const stars = [];
+for (let i = 0; i < 120; i++) {
+  stars.push({
+    x: Math.random(), y: Math.random(),
+    r: 0.3 + Math.random() * 1.2,
+    a: 0.1 + Math.random() * 0.4,
+    s: 0.5 + Math.random() * 1.5
+  });
+}
+
+function drawStars(t) {
+  for (const st of stars) {
+    const fl = 0.6 + 0.4 * Math.sin(t * st.s + st.x * 100);
+    ctx.beginPath();
+    ctx.arc(st.x * W, st.y * H, st.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${st.a * fl})`;
+    ctx.fill();
+  }
+}
+
+function render(ts) {
+  const t = ts / 1000;
+  size += (targetSize - size) * SMOOTHING;
+
+  ctx.fillStyle = '#06060f';
+  ctx.fillRect(0, 0, W, H);
+  drawStars(t);
+
+  const n = clenchCount;
+  if (n > 0 && SHAPES[n]) {
+    const cx = W / 2, cy = H / 2;
+    const pulse = 1 + Math.sin(t * 1.2) * 0.02;
+
+    const bgGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.8);
+    bgGrad.addColorStop(0, SHAPES[n].color + '08');
+    bgGrad.addColorStop(1, 'transparent');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, W, H);
+    const s = size * pulse;
+    const newPoints = genPoints(n, cx, cy, s);
+
+    let renderPoints;
+    if (n !== prevCount) {
+      prevPoints = (prevCount > 0 && currPoints.length) ? currPoints : newPoints;
+      morphProgress = 0;
+      prevCount = n;
+    }
+
+    if (morphProgress < 1 && prevPoints.length > 0) {
+      morphProgress = Math.min(1, morphProgress + 0.025);
+      renderPoints = [];
+      const len = Math.min(prevPoints.length, newPoints.length);
+      for (let i = 0; i < len; i++) {
+        renderPoints.push({
+          x: prevPoints[i].x + (newPoints[i].x - prevPoints[i].x) * morphProgress,
+          y: prevPoints[i].y + (newPoints[i].y - prevPoints[i].y) * morphProgress
+        });
+      }
+      for (let i = len; i < newPoints.length; i++) renderPoints.push(newPoints[i]);
+    } else {
+      renderPoints = newPoints;
+    }
+    currPoints = renderPoints;
+
+    const color = SHAPES[n].color;
+    const glow = 10 + 6 * Math.sin(t * 1.5 + 1);
+
+    for (const p of renderPoints) {
+      const r = 1.5 + 1.5 * Math.sin(t * 2 + p.x * 0.1 + p.y * 0.1);
+      const alpha = 0.7 + 0.3 * Math.sin(t * 1.8 + p.x * 0.05);
+      const aHex = Math.round(alpha * 255).toString(16).padStart(2, '0');
+
+      ctx.shadowBlur = glow;
+      ctx.shadowColor = color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(0.5, r), 0, Math.PI * 2);
+      ctx.fillStyle = color + aHex;
+      ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+  } else {
+    prevCount = -1;
+    morphProgress = 1;
+    prevPoints = [];
+    currPoints = [];
+  }
+
+  requestAnimationFrame(render);
+}
+
+camera.start().then(() => {
+  videoEl.classList.add('ready');
+  loadingEl.classList.add('hidden');
+  setTimeout(() => { loadingEl.style.display = 'none'; }, 1000);
+  render(0);
+}).catch(err => {
+  console.error(err);
+  loadingEl.innerHTML = `
+    <p style="color:rgba(255,255,255,0.5);font-size:16px;text-align:center;line-height:1.8">
+      Нет доступа к камере<br>
+      <span style="font-size:12px;opacity:0.5">Разрешите доступ к камере и обновите страницу</span>
+    </p>`;
+});
+</script>
 </body>
 </html>

